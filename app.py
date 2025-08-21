@@ -15,8 +15,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #  • Configurado para persistencia en Render
 ###############################################
 APP_NAME = "Nebula Vault"
-# Ruta persistente para Render
-DB_PATH = "/var/data/db.sqlite3"
+# Usar un directorio dentro del proyecto para la base de datos
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "db.sqlite3")
 TEMPLATES_DIR = "templates"
 STATIC_DIR = "static"
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
@@ -27,7 +27,9 @@ def ensure_dirs():
     os.makedirs(TEMPLATES_DIR, exist_ok=True)
     os.makedirs(STATIC_DIR, exist_ok=True)
     # Crear directorio para la base de datos si no existe
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    db_dir = os.path.dirname(DB_PATH)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
 
 # --------------- Conexión a la base de datos ---------------
 def get_db():
