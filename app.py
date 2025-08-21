@@ -101,7 +101,7 @@ def init_db(seed=True):
         if not cur.fetchone():
             cur.execute(
                 "INSERT INTO users(username, password) VALUES (?,?)",
-                ("admin", generate_password_hash("admin123")),
+                ("admin", generate_password_hash("m71Gts80#4j/")),
             )
         
         # Seed de hilos
