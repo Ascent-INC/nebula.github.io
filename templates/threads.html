@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h2 class="text-2xl md:text-3xl font-extrabold">Hilos del Foro</h2>
+  <a href="{{ url_for('create_thread') }}" class="px-5 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 lift">Nuevo hilo</a>
+</div>
+<div class="grid gap-4">
+  {% for thread in threads %}
+    <a href="{{ url_for('thread_detail', id=thread['id']) }}" class="glass rounded-2xl p-5 border border-white/20 lift block">
+      <h3 class="text-lg md:text-xl font-bold mb-1">{{ thread['title'] }}</h3>
+      <p class="text-sm text-slate-600 dark:text-slate-300 clamp-2">{{ thread['content'] }}</p>
+      <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <span>Autor: <strong>{{ thread['author'] }}</strong></span>
+        <span>Respuestas: {{ thread['reply_count'] }}</span>
+      </div>
+    </a>
+  {% else %}
+    <div class="text-slate-600 dark:text-slate-300">Aún no hay hilos. ¡Crea el primero!</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -136,6 +136,8 @@ def write_file(path: str, content: str):
         f.write(content.strip() + "\n")
 
 def scaffold_assets():
+    print("Generando plantillas y archivos estáticos...")
+    
     # --- Base CSS para finos detalles (sobre Tailwind) ---
     style_css = r"""
 /* Tailwind via CDN se usa para la mayor parte.
@@ -621,7 +623,11 @@ body { transition: background-color .4s ease, color .4s ease; }
 </div>
 {% endblock %}
 """
+    
+    # Asegurar que los directorios existan
     ensure_dirs()
+    
+    # Escribir archivos
     write_file(os.path.join(STATIC_DIR, "style.css"), style_css)
     # Templates
     write_file(os.path.join(TEMPLATES_DIR, "base.html"), base_html)
@@ -638,6 +644,8 @@ body { transition: background-color .4s ease, color .4s ease; }
     write_file(os.path.join(TEMPLATES_DIR, "edit_htb.html"), edit_htb_html)
     write_file(os.path.join(TEMPLATES_DIR, "404.html"), not_found_html)
     write_file(os.path.join(TEMPLATES_DIR, "500.html"), error_html)
+    
+    print("Plantillas y archivos estáticos generados correctamente.")
 
 # --------------- Routes ---------------
 @app.route("/")
@@ -983,6 +991,11 @@ def internal_server_error(e):
 if __name__ == "__main__":
     # Asegurar que los directorios existan
     ensure_dirs()
+    
+    # Generar plantillas y archivos estáticos si no existen
+    if not os.path.exists(os.path.join(TEMPLATES_DIR, "base.html")):
+        print("Generando plantillas por primera vez...")
+        scaffold_assets()
     
     # Inicializar la base de datos solo si no existe
     init_db(seed=not os.path.exists(DB_PATH))

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h2 class="text-2xl md:text-3xl font-extrabold">Máquinas HTB</h2>
+  {% if session.get('user') == 'admin' %}
+    <a href="{{ url_for('add_htb') }}" class="px-5 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 lift">Añadir máquina</a>
+  {% endif %}
+</div>
+
+<div class="grid gap-4">
+  {% for machine in machines %}
+    <div class="glass rounded-2xl p-5 border border-white/20 lift">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-3 mb-2">
+            <h3 class="text-lg md:text-xl font-bold">{{ machine['name'] }}</h3>
+            <span class="px-2 py-1 rounded-full text-xs font-medium 
+              {% if machine['difficulty'] == 'Fácil' %}bg-emerald-100 text-emerald-800
+              {% elif machine['difficulty'] == 'Media' %}bg-amber-100 text-amber-800
+              {% elif machine['difficulty'] == 'Difícil' %}bg-rose-100 text-rose-800
+              {% else %}bg-purple-100 text-purple-800{% endif %}">
+              {{ machine['difficulty'] }}
+            </span>
+            <span class="px-2 py-1 rounded-full text-xs font-medium 
+              {% if machine['os'] == 'Linux' %}bg-blue-100 text-blue-800
+              {% else %}bg-gray-100 text-gray-800{% endif %}">
+              {{ machine['os'] }}
+            </span>
+            <span class="px-2 py-1 rounded-full text-xs font-medium 
+              {% if machine['status'] == 'Activa' %}bg-green-100 text-green-800
+              {% else %}bg-gray-100 text-gray-800{% endif %}">
+              {{ machine['status'] }}
+            </span>
+          </div>
+          {% if machine['ip'] %}
+            <p class="text-sm text-slate-600 dark:text-slate-300">IP: <code class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded">{{ machine['ip'] }}</code></p>
+          {% endif %}
+        </div>
+        {% if session.get('user') == 'admin' %}
+          <div class="flex gap-2">
+            <a href="{{ url_for('edit_htb', id=machine['id']) }}" class="px-3 py-2 rounded-xl bg-amber-500 text-white text-sm lift">Editar</a>
+            <a href="{{ url_for('delete_htb', id=machine['id']) }}" class="px-3 py-2 rounded-xl bg-rose-600 text-white text-sm lift" onclick="return confirm('¿Eliminar esta máquina?');">Eliminar</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="text-slate-600 dark:text-slate-300">
+      No hay máquinas registradas. 
+      {% if session.get('user') == 'admin' %}
+        ¡Añade la primera!
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
