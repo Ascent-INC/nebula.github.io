@@ -84,7 +84,7 @@ def init_db(seed=True):
     if not cur.fetchone():
         cur.execute(
             "INSERT INTO users(username, password) VALUES (?,?)",
-            ("admin", generate_password_hash("admin123")),
+            ("admin", generate_password_hash("nxn£2K0(£d|%B'Z54u6£$_Nv347$4}lA[MRphjACe+F&6$Mo0i")),
         )
     # Seed suave si la DB está vacía
     cur.execute("SELECT COUNT(*) FROM threads")
@@ -843,7 +843,7 @@ def delete_reply(id: int):
     flash("Respuesta eliminada.", "success")
     return redirect(url_for("thread_detail", id=thread_id))
 
-# --- Rutas para HTB ---
+# Rutas para HTB
 @app.route("/htb")
 def htb():
     if not session.get("user"):
@@ -858,6 +858,11 @@ def htb():
 def add_htb():
     if not session.get("user"):
         return redirect(url_for("login"))
+    
+    # Verificar si el usuario es admin
+    if session.get("user") != "admin":
+        flash("Solo el administrador puede añadir máquinas.", "error")
+        return redirect(url_for("htb"))
     
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
@@ -885,6 +890,11 @@ def add_htb():
 def edit_htb(id: int):
     if not session.get("user"):
         return redirect(url_for("login"))
+    
+    # Verificar si el usuario es admin
+    if session.get("user") != "admin":
+        flash("Solo el administrador puede editar máquinas.", "error")
+        return redirect(url_for("htb"))
     
     db = get_db()
     cur = db.cursor()
@@ -919,26 +929,15 @@ def delete_htb(id: int):
     if not session.get("user"):
         return redirect(url_for("login"))
     
+    # Verificar si el usuario es admin
+    if session.get("user") != "admin":
+        flash("Solo el administrador puede eliminar máquinas.", "error")
+        return redirect(url_for("htb"))
+    
     db = get_db()
     cur = db.cursor()
     cur.execute("DELETE FROM htb_machines WHERE id=?", (id,))
     db.commit()
     flash("Máquina eliminada correctamente.", "success")
     return redirect(url_for("htb"))
-
-# --- Error handlers ---
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template("404.html", title="404"), 404
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template("500.html", title="500"), 500
-
-# --------------- Main ---------------
-if __name__ == "__main__":
-    scaffold_assets()
-    init_db(seed=True)
-    # Consejo: en producción usa una variable de entorno para DEBUG
-    app.jinja_env.globals.update(datetime=datetime)
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
