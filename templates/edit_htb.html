@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-3xl mx-auto glass rounded-3xl p-8 border border-white/20">
+  <h2 class="text-2xl md:text-3xl font-extrabold mb-6">Editar máquina HTB</h2>
+  {% if error %}<div class="mb-4 px-3 py-2 rounded-lg bg-rose-100/70 text-rose-700 dark:text-rose-100">{{ error }}</div>{% endif %}
+  <form method="post" class="space-y-5" data-hotkey="submit">
+    <div>
+      <label class="block text-sm mb-1">Nombre</label>
+      <input name="name" value="{{ machine['name'] }}" required class="w-full px-4 py-3 rounded-xl border border-slate-300/70 dark:border-white/10 bg-white/80 dark:bg-white/5 focus-glow" />
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm mb-1">Dificultad</label>
+        <select name="difficulty" required class="w-full px-4 py-3 rounded-xl border border-slate-300/70 dark:border-white/10 bg-white/80 dark:bg-white/5 focus-glow">
+          <option value="Fácil" {% if machine['difficulty'] == 'Fácil' %}selected{% endif %}>Fácil</option>
+          <option value="Media" {% if machine['difficulty'] == 'Media' %}selected{% endif %}>Media</option>
+          <option value="Difícil" {% if machine['difficulty'] == 'Difícil' %}selected{% endif %}>Difícil</option>
+          <option value="Insana" {% if machine['difficulty'] == 'Insana' %}selected{% endif %}>Insana</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">Sistema Operativo</label>
+        <select name="os" required class="w-full px-4 py-3 rounded-xl border border-slate-300/70 dark:border-white/10 bg-white/80 dark:bg-white/5 focus-glow">
+          <option value="Linux" {% if machine['os'] == 'Linux' %}selected{% endif %}>Linux</option>
+          <option value="Windows" {% if machine['os'] == 'Windows' %}selected{% endif %}>Windows</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Dirección IP (opcional)</label>
+      <input name="ip" value="{{ machine['ip'] or '' }}" class="w-full px-4 py-3 rounded-xl border border-slate-300/70 dark:border-white/10 bg-white/80 dark:bg-white/5 focus-glow" />
+    </div>
+    <div>
+      <label class="block text-sm mb-1">Estado</label>
+      <select name="status" required class="w-full px-4 py-3 rounded-xl border border-slate-300/70 dark:border-white/10 bg-white/80 dark:bg-white/5 focus-glow">
+        <option value="Activa" {% if machine['status'] == 'Activa' %}selected{% endif %}>Activa</option>
+        <option value="Retirada" {% if machine['status'] == 'Retirada' %}selected{% endif %}>Retirada</option>
+      </select>
+    </div>
+    <button class="px-5 py-3 rounded-xl font-bold text-white bg-amber-500 hover:bg-amber-600 lift">Guardar cambios</button>
+  </form>
+</div>
+{% endblock %}
