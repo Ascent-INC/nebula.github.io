@@ -5,34 +5,44 @@ from flask import Flask, render_template, request, redirect, url_for, session, a
 from werkzeug.security import generate_password_hash, check_password_hash
 
 ###############################################
-#  Flask Forum – Single-file app
+#  Flask Forum – Single-file app para Render
 #  • Crea automáticamente /templates y /static
 #  • UI renovada: glassmorphism + gradientes + dark mode
 #  • Login/Register, Dashboard, Foro con hilos/respuestas
 #  • Seed de datos opcional en el primer arranque
 #  • Nueva sección: Máquinas y retos de Hack The Box
 #  • Solo admin puede gestionar máquinas HTB
+#  • Configurado para persistencia en Render
 ###############################################
 APP_NAME = "Nebula Vault"
-DB_PATH = "db.sqlite3"
+# Ruta persistente para Render
+DB_PATH = "/var/data/db.sqlite3"
 TEMPLATES_DIR = "templates"
 STATIC_DIR = "static"
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
-app.secret_key = os.urandom(32)
+app.secret_key = os.environ.get("SECRET_KEY", os.urandom(32))
 
-# --------------- Helpers ---------------
+# --------------- Asegurar directorios persistentes ---------------
 def ensure_dirs():
     os.makedirs(TEMPLATES_DIR, exist_ok=True)
     os.makedirs(STATIC_DIR, exist_ok=True)
+    # Crear directorio para la base de datos si no existe
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
+# --------------- Conexión a la base de datos ---------------
 def get_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     return db
 
 def init_db(seed=True):
+    # Verificar si la base de datos ya existe
+    db_exists = os.path.exists(DB_PATH)
+    
     db = get_db()
     cur = db.cursor()
+    
+    # Crear tablas si no existen
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
@@ -80,16 +90,18 @@ def init_db(seed=True):
         )
         """
     )
-    # Admin por defecto
-    cur.execute("SELECT 1 FROM users WHERE username=?", ("admin",))
-    if not cur.fetchone():
-        cur.execute(
-            "INSERT INTO users(username, password) VALUES (?,?)",
-            ("admin", generate_password_hash("admin123")),
-        )
-    # Seed suave si la DB está vacía
-    cur.execute("SELECT COUNT(*) FROM threads")
-    if seed and cur.fetchone()[0] == 0:
+    
+    # Solo hacer seed si la base de datos es nueva
+    if not db_exists and seed:
+        # Admin por defecto
+        cur.execute("SELECT 1 FROM users WHERE username=?", ("admin",))
+        if not cur.fetchone():
+            cur.execute(
+                "INSERT INTO users(username, password) VALUES (?,?)",
+                ("admin", generate_password_hash("admin123")),
+            )
+        
+        # Seed de hilos
         demo_threads = [
             ("Bienvenida a Nebula Vault", "Comparte tips de ciberseguridad, laboratorios y writeups.", "admin"),
             ("Recursos útiles", "Deja tus enlaces favoritos (herramientas, cheat-sheets, labs).", "admin"),
@@ -98,9 +110,8 @@ def init_db(seed=True):
             "INSERT INTO threads(title, content, author) VALUES (?,?,?)",
             demo_threads,
         )
-    # Seed de máquinas HTB
-    cur.execute("SELECT COUNT(*) FROM htb_machines")
-    if seed and cur.fetchone()[0] == 0:
+        
+        # Seed de máquinas HTB
         demo_machines = [
             ("Legacy", "Fácil", "Windows", "10.10.10.4", "Retirada"),
             ("Active", "Media", "Windows", "10.10.10.100", "Activa"),
@@ -113,6 +124,7 @@ def init_db(seed=True):
             "INSERT INTO htb_machines(name, difficulty, os, ip, status) VALUES (?,?,?,?,?)",
             demo_machines,
         )
+    
     db.commit()
     db.close()
 
@@ -967,9 +979,13 @@ def internal_server_error(e):
 
 # --------------- Main ---------------
 if __name__ == "__main__":
-    scaffold_assets()
-    init_db(seed=True)
+    # Asegurar que los directorios existan
+    ensure_dirs()
+    
+    # Inicializar la base de datos solo si no existe
+    init_db(seed=not os.path.exists(DB_PATH))
+    
     # Configurar para producción en Render
     app.jinja_env.globals.update(datetime=datetime)
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
