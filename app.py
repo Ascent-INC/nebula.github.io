@@ -12,6 +12,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #  • Seed de datos opcional en el primer arranque
 #  • Nueva sección: Máquinas y retos de Hack The Box
 #  • Solo admin puede gestionar máquinas HTB
+#  • Panel de admin para banear usuarios y eliminar hilos
 #  • Configurado para persistencia en Render
 ###############################################
 APP_NAME = "Nebula Vault"
@@ -202,6 +203,11 @@ body { transition: background-color .4s ease, color .4s ease; }
               <span class="ml-1 px-2 py-0.5 text-xs bg-purple-500 text-white rounded-full">ADMIN</span>
             {% endif %}
           </a>
+          {% if session['user'] == 'admin' %}
+            <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('admin_panel') }}">
+              Panel Admin
+            </a>
+          {% endif %}
           <a class="px-3 py-2 rounded-xl lift hover:bg-rose-50 dark:hover:bg-white/10" href="{{ url_for('logout') }}">Salir</a>
         {% else %}
           <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('login') }}">Login</a>
@@ -356,10 +362,14 @@ body { transition: background-color .4s ease, color .4s ease; }
   <h1 class="text-2xl md:text-3xl font-extrabold mb-2">{{ thread['title'] }}</h1>
   <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Por <strong>{{ thread['author'] }}</strong> · {{ thread['created_at'] }}</p>
   <div class="prose dark:prose-invert max-w-none">{{ thread['content'] }}</div>
-  {% if session['user'] == thread['author'] %}
+  {% if session['user'] == thread['author'] or session['user'] == 'admin' %}
     <div class="mt-6 flex gap-2">
-      <a href="{{ url_for('edit_thread', id=thread['id']) }}" class="px-4 py-2 rounded-xl bg-amber-500 text-white lift">Editar</a>
-      <a href="{{ url_for('delete_thread', id=thread['id']) }}" class="px-4 py-2 rounded-xl bg-rose-600 text-white lift" onclick="return confirm('¿Eliminar este hilo y todas sus respuestas?');">Eliminar</a>
+      {% if session['user'] == thread['author'] %}
+        <a href="{{ url_for('edit_thread', id=thread['id']) }}" class="px-4 py-2 rounded-xl bg-amber-500 text-white lift">Editar</a>
+      {% endif %}
+      <a href="{{ url_for('delete_thread', id=thread['id']) if session['user'] == thread['author'] else url_for('admin_delete_thread', thread_id=thread['id']) }}" 
+         class="px-4 py-2 rounded-xl bg-rose-600 text-white lift" 
+         onclick="return confirm('¿Eliminar este hilo y todas sus respuestas?');">Eliminar</a>
     </div>
   {% endif %}
 </article>
@@ -597,6 +607,96 @@ body { transition: background-color .4s ease, color .4s ease; }
 {% endblock %}
 """
 
+    # Plantilla para el panel de administrador
+    admin_html = r"""
+{% extends 'base.html' %}
+{% block content %}
+<div class="mb-8">
+  <h2 class="text-2xl md:text-3xl font-extrabold mb-6">Panel de Administrador</h2>
+  
+  <!-- Sección de usuarios -->
+  <div class="glass rounded-3xl p-8 border border-white/20 mb-8">
+    <h3 class="text-xl font-bold mb-4">Gestión de Usuarios</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-white/20">
+            <th class="text-left py-3 px-4">ID</th>
+            <th class="text-left py-3 px-4">Usuario</th>
+            <th class="text-left py-3 px-4">Fecha de registro</th>
+            <th class="text-left py-3 px-4">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr class="border-b border-white/10">
+            <td class="py-3 px-4">{{ user['id'] }}</td>
+            <td class="py-3 px-4 font-medium">{{ user['username'] }}</td>
+            <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">{{ user['created_at'] }}</td>
+            <td class="py-3 px-4">
+              <a href="{{ url_for('ban_user', user_id=user['id']) }}" 
+                 class="px-3 py-1 rounded-lg bg-rose-600 text-white text-sm lift"
+                 onclick="return confirm('¿Estás seguro de que quieres banear a este usuario? Se eliminarán todas sus publicaciones y respuestas.');">
+                Banear
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="py-4 px-4 text-center text-slate-600 dark:text-slate-300">
+              No hay usuarios para mostrar.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <!-- Sección de hilos -->
+  <div class="glass rounded-3xl p-8 border border-white/20">
+    <h3 class="text-xl font-bold mb-4">Gestión de Hilos</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-white/20">
+            <th class="text-left py-3 px-4">ID</th>
+            <th class="text-left py-3 px-4">Título</th>
+            <th class="text-left py-3 px-4">Autor</th>
+            <th class="text-left py-3 px-4">Fecha de creación</th>
+            <th class="text-left py-3 px-4">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for thread in threads %}
+          <tr class="border-b border-white/10">
+            <td class="py-3 px-4">{{ thread['id'] }}</td>
+            <td class="py-3 px-4 font-medium">{{ thread['title'] }}</td>
+            <td class="py-3 px-4">{{ thread['author'] }}</td>
+            <td class="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">{{ thread['created_at'] }}</td>
+            <td class="py-3 px-4">
+              <a href="{{ url_for('admin_delete_thread', thread_id=thread['id']) }}" 
+                 class="px-3 py-1 rounded-lg bg-rose-600 text-white text-sm lift"
+                 onclick="return confirm('¿Estás seguro de que quieres eliminar este hilo? Se eliminarán todas sus respuestas.');">
+                Eliminar
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="py-4 px-4 text-center text-slate-600 dark:text-slate-300">
+              No hay hilos para mostrar.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+"""
+
     not_found_html = r"""
 {% extends 'base.html' %}
 {% block content %}
@@ -642,6 +742,7 @@ body { transition: background-color .4s ease, color .4s ease; }
     write_file(os.path.join(TEMPLATES_DIR, "htb.html"), htb_html)
     write_file(os.path.join(TEMPLATES_DIR, "add_htb.html"), add_htb_html)
     write_file(os.path.join(TEMPLATES_DIR, "edit_htb.html"), edit_htb_html)
+    write_file(os.path.join(TEMPLATES_DIR, "admin.html"), admin_html)  # Nueva plantilla
     write_file(os.path.join(TEMPLATES_DIR, "404.html"), not_found_html)
     write_file(os.path.join(TEMPLATES_DIR, "500.html"), error_html)
     
@@ -977,6 +1078,87 @@ def delete_htb(id: int):
     db.commit()
     flash("Máquina eliminada correctamente.", "success")
     return redirect(url_for("htb"))
+
+# --- Rutas para el panel de administrador ---
+@app.route("/admin")
+def admin_panel():
+    if not session.get("user") or session.get("user") != "admin":
+        flash("Acceso denegado. Solo el administrador puede acceder a este panel.", "error")
+        return redirect(url_for("dashboard"))
+    
+    db = get_db()
+    cur = db.cursor()
+    
+    # Obtener todos los usuarios excepto el admin
+    cur.execute("SELECT id, username, created_at FROM users WHERE username != 'admin' ORDER BY id")
+    users = cur.fetchall()
+    
+    # Obtener todos los hilos
+    cur.execute("SELECT id, title, author, created_at FROM threads ORDER BY id DESC")
+    threads = cur.fetchall()
+    
+    return render_template("admin.html", users=users, threads=threads, title="Panel de Administrador")
+
+@app.route("/admin/ban_user/<int:user_id>")
+def ban_user(user_id):
+    if not session.get("user") or session.get("user") != "admin":
+        flash("Acceso denegado. Solo el administrador puede realizar esta acción.", "error")
+        return redirect(url_for("dashboard"))
+    
+    db = get_db()
+    cur = db.cursor()
+    
+    # Verificar si el usuario existe
+    cur.execute("SELECT username FROM users WHERE id=?", (user_id,))
+    user = cur.fetchone()
+    
+    if not user:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for("admin_panel"))
+    
+    username = user[0]
+    
+    # Eliminar todas las respuestas del usuario
+    cur.execute("DELETE FROM replies WHERE author=?", (username,))
+    
+    # Eliminar todos los hilos del usuario
+    cur.execute("DELETE FROM threads WHERE author=?", (username,))
+    
+    # Eliminar al usuario
+    cur.execute("DELETE FROM users WHERE id=?", (user_id,))
+    
+    db.commit()
+    flash(f"El usuario '{username}' ha sido baneado y todo su contenido eliminado.", "success")
+    return redirect(url_for("admin_panel"))
+
+@app.route("/admin/delete_thread/<int:thread_id>")
+def admin_delete_thread(thread_id):
+    if not session.get("user") or session.get("user") != "admin":
+        flash("Acceso denegado. Solo el administrador puede realizar esta acción.", "error")
+        return redirect(url_for("dashboard"))
+    
+    db = get_db()
+    cur = db.cursor()
+    
+    # Verificar si el hilo existe
+    cur.execute("SELECT title FROM threads WHERE id=?", (thread_id,))
+    thread = cur.fetchone()
+    
+    if not thread:
+        flash("Hilo no encontrado.", "error")
+        return redirect(url_for("admin_panel"))
+    
+    thread_title = thread[0]
+    
+    # Eliminar todas las respuestas del hilo
+    cur.execute("DELETE FROM replies WHERE thread_id=?", (thread_id,))
+    
+    # Eliminar el hilo
+    cur.execute("DELETE FROM threads WHERE id=?", (thread_id,))
+    
+    db.commit()
+    flash(f"El hilo '{thread_title}' ha sido eliminado.", "success")
+    return redirect(url_for("admin_panel"))
 
 # --- Error handlers ---
 @app.errorhandler(404)

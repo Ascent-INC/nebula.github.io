@@ -4,10 +4,14 @@
   <h1 class="text-2xl md:text-3xl font-extrabold mb-2">{{ thread['title'] }}</h1>
   <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Por <strong>{{ thread['author'] }}</strong> · {{ thread['created_at'] }}</p>
   <div class="prose dark:prose-invert max-w-none">{{ thread['content'] }}</div>
-  {% if session['user'] == thread['author'] %}
+  {% if session['user'] == thread['author'] or session['user'] == 'admin' %}
     <div class="mt-6 flex gap-2">
-      <a href="{{ url_for('edit_thread', id=thread['id']) }}" class="px-4 py-2 rounded-xl bg-amber-500 text-white lift">Editar</a>
-      <a href="{{ url_for('delete_thread', id=thread['id']) }}" class="px-4 py-2 rounded-xl bg-rose-600 text-white lift" onclick="return confirm('¿Eliminar este hilo y todas sus respuestas?');">Eliminar</a>
+      {% if session['user'] == thread['author'] %}
+        <a href="{{ url_for('edit_thread', id=thread['id']) }}" class="px-4 py-2 rounded-xl bg-amber-500 text-white lift">Editar</a>
+      {% endif %}
+      <a href="{{ url_for('delete_thread', id=thread['id']) if session['user'] == thread['author'] else url_for('admin_delete_thread', thread_id=thread['id']) }}" 
+         class="px-4 py-2 rounded-xl bg-rose-600 text-white lift" 
+         onclick="return confirm('¿Eliminar este hilo y todas sus respuestas?');">Eliminar</a>
     </div>
   {% endif %}
 </article>

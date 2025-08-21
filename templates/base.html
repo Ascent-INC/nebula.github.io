@@ -39,6 +39,11 @@
               <span class="ml-1 px-2 py-0.5 text-xs bg-purple-500 text-white rounded-full">ADMIN</span>
             {% endif %}
           </a>
+          {% if session['user'] == 'admin' %}
+            <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('admin_panel') }}">
+              Panel Admin
+            </a>
+          {% endif %}
           <a class="px-3 py-2 rounded-xl lift hover:bg-rose-50 dark:hover:bg-white/10" href="{{ url_for('logout') }}">Salir</a>
         {% else %}
           <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('login') }}">Login</a>
