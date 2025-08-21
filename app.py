@@ -11,6 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 #  • Login/Register, Dashboard, Foro con hilos/respuestas
 #  • Seed de datos opcional en el primer arranque
 #  • Nueva sección: Máquinas y retos de Hack The Box
+#  • Solo admin puede gestionar máquinas HTB
 ###############################################
 APP_NAME = "Nebula Vault"
 DB_PATH = "db.sqlite3"
@@ -84,7 +85,7 @@ def init_db(seed=True):
     if not cur.fetchone():
         cur.execute(
             "INSERT INTO users(username, password) VALUES (?,?)",
-            ("admin", generate_password_hash("nxn£2K0(£d|%B'Z54u6£$_Nv347$4}lA[MRphjACe+F&6$Mo0i")),
+            ("admin", generate_password_hash("admin123")),
         )
     # Seed suave si la DB está vacía
     cur.execute("SELECT COUNT(*) FROM threads")
@@ -179,7 +180,12 @@ body { transition: background-color .4s ease, color .4s ease; }
         {% if session.get('user') %}
           <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('threads') }}">Hilos</a>
           <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('htb') }}">HTB</a>
-          <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('profile') }}">Perfil</a>
+          <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('profile') }}">
+            {{ session['user'] }}
+            {% if session['user'] == 'admin' %}
+              <span class="ml-1 px-2 py-0.5 text-xs bg-purple-500 text-white rounded-full">ADMIN</span>
+            {% endif %}
+          </a>
           <a class="px-3 py-2 rounded-xl lift hover:bg-rose-50 dark:hover:bg-white/10" href="{{ url_for('logout') }}">Salir</a>
         {% else %}
           <a class="px-3 py-2 rounded-xl lift hover:bg-indigo-50 dark:hover:bg-white/10" href="{{ url_for('login') }}">Login</a>
@@ -429,7 +435,9 @@ body { transition: background-color .4s ease, color .4s ease; }
 {% block content %}
 <div class="flex items-center justify-between mb-6">
   <h2 class="text-2xl md:text-3xl font-extrabold">Máquinas HTB</h2>
-  <a href="{{ url_for('add_htb') }}" class="px-5 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 lift">Añadir máquina</a>
+  {% if session.get('user') == 'admin' %}
+    <a href="{{ url_for('add_htb') }}" class="px-5 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 lift">Añadir máquina</a>
+  {% endif %}
 </div>
 
 <div class="grid gap-4">
@@ -461,14 +469,21 @@ body { transition: background-color .4s ease, color .4s ease; }
             <p class="text-sm text-slate-600 dark:text-slate-300">IP: <code class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded">{{ machine['ip'] }}</code></p>
           {% endif %}
         </div>
-        <div class="flex gap-2">
-          <a href="{{ url_for('edit_htb', id=machine['id']) }}" class="px-3 py-2 rounded-xl bg-amber-500 text-white text-sm lift">Editar</a>
-          <a href="{{ url_for('delete_htb', id=machine['id']) }}" class="px-3 py-2 rounded-xl bg-rose-600 text-white text-sm lift" onclick="return confirm('¿Eliminar esta máquina?');">Eliminar</a>
-        </div>
+        {% if session.get('user') == 'admin' %}
+          <div class="flex gap-2">
+            <a href="{{ url_for('edit_htb', id=machine['id']) }}" class="px-3 py-2 rounded-xl bg-amber-500 text-white text-sm lift">Editar</a>
+            <a href="{{ url_for('delete_htb', id=machine['id']) }}" class="px-3 py-2 rounded-xl bg-rose-600 text-white text-sm lift" onclick="return confirm('¿Eliminar esta máquina?');">Eliminar</a>
+          </div>
+        {% endif %}
       </div>
     </div>
   {% else %}
-    <div class="text-slate-600 dark:text-slate-300">No hay máquinas registradas. ¡Añade la primera!</div>
+    <div class="text-slate-600 dark:text-slate-300">
+      No hay máquinas registradas. 
+      {% if session.get('user') == 'admin' %}
+        ¡Añade la primera!
+      {% endif %}
+    </div>
   {% endfor %}
 </div>
 {% endblock %}
@@ -843,7 +858,7 @@ def delete_reply(id: int):
     flash("Respuesta eliminada.", "success")
     return redirect(url_for("thread_detail", id=thread_id))
 
-# Rutas para HTB
+# --- Rutas para HTB ---
 @app.route("/htb")
 def htb():
     if not session.get("user"):
@@ -940,4 +955,21 @@ def delete_htb(id: int):
     db.commit()
     flash("Máquina eliminada correctamente.", "success")
     return redirect(url_for("htb"))
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+# --- Error handlers ---
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html", title="404"), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template("500.html", title="500"), 500
+
+# --------------- Main ---------------
+if __name__ == "__main__":
+    scaffold_assets()
+    init_db(seed=True)
+    # Configurar para producción en Render
+    app.jinja_env.globals.update(datetime=datetime)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
